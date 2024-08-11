@@ -1,58 +1,13 @@
-diff --git a/src/nsterm.h b/src/nsterm.h
-index 6c67653705e..0833745616e 100644
---- a/src/nsterm.h
-+++ b/src/nsterm.h
-@@ -523,6 +523,7 @@ enum ns_return_frame_mode
- 
- /* Non-notification versions of NSView methods. Used for direct calls.  */
- - (void)adjustEmacsFrameRect;
-+- (void)workspaceDidWake: (NSNotification *) notification;
- - (void)windowWillEnterFullScreen;
- - (void)windowDidEnterFullScreen;
- - (void)windowWillExitFullScreen;
 diff --git a/src/nsterm.m b/src/nsterm.m
-index 473a5e705e9..24b97bfe421 100644
+index 473a5e705e9..b55282d9a40 100644
 --- a/src/nsterm.m
 +++ b/src/nsterm.m
-@@ -6689,6 +6689,13 @@ - (void)dealloc
-               name:NSViewFrameDidChangeNotification
-             object:nil];
+@@ -7956,6 +7956,8 @@ - (void)windowDidBecomeKey: (NSNotification *)notification
  
-+  #ifdef NS_IMPL_COCOA
-+  [[[NSWorkspace sharedWorkspace] notificationCenter]
-+    removeObserver: self
-+              name: NSWorkspaceDidWakeNotification
-+	          object: nil];
-+  #endif
-+
-   if (fs_state == FULLSCREEN_BOTH)
-     [nonfs_window release];
-   [super dealloc];
-@@ -8039,6 +8046,11 @@ - (BOOL)isOpaque
-   return NO;
- }
- 
-+- (void)workspaceDidWake: (NSNotification *) notification
-+{
+ - (void)windowDidBecomeKey      /* for direct calls */
+ {
 +  if (emacsframe)
 +    [self adjustEmacsFrameRect];
-+}
- 
- - (instancetype) initFrameFromEmacs: (struct frame *)f
- {
-@@ -8051,6 +8063,15 @@ - (instancetype) initFrameFromEmacs: (struct frame *)f
-   fs_state = FULLSCREEN_NONE;
-   fs_before_fs = next_maximized = -1;
- 
-+  #ifdef NS_IMPL_COCOA
-+  /* Wrong frame rectangle after wake (bug#71912).  */
-+  [[[NSWorkspace sharedWorkspace] notificationCenter]
-+    addObserver: self
-+       selector: @selector (workspaceDidWake:)
-+	         name: NSWorkspaceDidWakeNotification
-+	       object: nil];
-+  #endif
-+
-   fs_is_native = NO;
- #if MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
- #if MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+   struct ns_display_info *dpyinfo = FRAME_DISPLAY_INFO (emacsframe);
+   struct frame *old_focus = dpyinfo->ns_focus_frame;
+   struct input_event event;
